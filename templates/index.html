@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CodeAgent</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #16161f;
+      --border: #1e1e2e;
+      --border-bright: #2e2e4e;
+      --accent: #7c6af7;
+      --accent2: #4fd1c5;
+      --accent3: #f687b3;
+      --text: #e2e0ff;
+      --text-muted: #6b6a8a;
+      --text-dim: #3a3a5c;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-display: 'Syne', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Subtle scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .status-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-memory {
+      background: transparent;
+      border: 1px solid var(--border-bright);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-memory:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(124,106,247,0.07);
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      padding: 20px 0;
+    }
+
+    .sidebar-section {
+      padding: 0 16px;
+      margin-bottom: 24px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .tool-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 3px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .tool-item:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .tool-item.active {
+      background: rgba(124,106,247,0.12);
+      color: var(--accent);
+    }
+
+    .tool-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Main Chat Area ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Messages ── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      scroll-behavior: smooth;
+    }
+
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+
+    /* Welcome state */
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      gap: 16px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.2s forwards;
+    }
+
+    .welcome-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, rgba(124,106,247,0.2), rgba(79,209,197,0.2));
+      border: 1px solid var(--border-bright);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+
+    .welcome h2 {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .welcome p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 340px;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .suggestion {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 13px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .suggestion:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Message bubbles */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      opacity: 0;
+      animation: fadeUp 0.3s ease forwards;
+      max-width: 800px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .msg-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+
+    .msg.user .msg-avatar {
+      background: linear-gradient(135deg, var(--accent3), var(--accent));
+    }
+
+    .msg.agent .msg-avatar {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+
+    .msg-name { font-weight: 500; }
+
+    .msg-time {
+      margin-left: auto;
+      font-size: 10px;
+    }
+
+    .msg-body {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .msg.user .msg-body {
+      background: rgba(124,106,247,0.1);
+      border: 1px solid rgba(124,106,247,0.2);
+      color: var(--text);
+      align-self: flex-end;
+    }
+
+    .msg.agent .msg-body {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    /* Code blocks inside messages */
+    .msg-body pre {
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      padding: 12px;
+      margin: 10px 0;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .msg-body code {
+      font-family: var(--font-mono);
+      color: var(--accent2);
+    }
+
+    .msg-body pre code {
+      color: var(--text);
+    }
+
+    /* Thinking indicator */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .thinking-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .thinking-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: blink 1.2s infinite;
+    }
+
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.2; }
+      40% { opacity: 1; }
+    }
+
+    /* ── Input Area ── */
+    .input-area {
+      border-top: 1px solid var(--border);
+      padding: 16px 32px 20px;
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: border-color 0.2s;
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,247,0.08);
+    }
+
+    #user-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      resize: none;
+      max-height: 140px;
+      min-height: 24px;
+      line-height: 1.6;
+    }
+
+    #user-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .input-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .input-hint {
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    #send-btn {
+      width: 34px;
+      height: 34px;
+      background: var(--accent);
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    #send-btn:hover {
+      background: #6b59e8;
+      transform: translateY(-1px);
+    }
+
+    #send-btn:active { transform: translateY(0); }
+
+    #send-btn:disabled {
+      background: var(--border-bright);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #send-btn svg { color: white; }
+
+    /* ── Memory Modal ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-bright);
+      border-radius: 12px;
+      width: 520px;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: fadeUp 0.25s ease;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 2px;
+      transition: color 0.15s;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .memory-empty {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 24px 0;
+    }
+
+    .memory-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .memory-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .memory-item-key {
+      font-size: 10px;
+      color: var(--accent2);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* Scrollbar for modal */
+    .modal-body::-webkit-scrollbar { width: 4px; }
+    .modal-body::-webkit-scrollbar-track { background: transparent; }
+    .modal-body::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+
+    /* Token counter */
+    .input-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 2px 0;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">CodeAgent</span>
+    </div>
+    <div class="header-actions">
+      <div class="status-dot"></div>
+      <span class="status-label">Ready</span>
+      <button class="btn-memory" onclick="openMemory()">⬡ Memory</button>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Tools</div>
+        <div class="tool-item active">
+          <div class="tool-dot" style="background:var(--accent)"></div>
+          Code Interpreter
+        </div>
+        <!-- <div class="tool-item">
+          <div class="tool-dot" style="background:var(--accent2)"></div>
+          File System
+        </div>
+        <div class="tool-item">
+          <div class="tool-dot" style="background:var(--accent3)"></div>
+          Web Search
+        </div>
+        <div class="tool-item">
+          <div class="tool-dot" style="background:var(--yellow)"></div>
+          Shell Exec
+        </div> -->
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">Session</div>
+        <div class="tool-item" id="msg-count-item">
+          <div class="tool-dot" style="background:var(--text-dim)"></div>
+          <span id="msg-count">0 messages</span>
+        </div>
+        <div class="tool-item" onclick="clearChat()">
+          <div class="tool-dot" style="background:var(--red)"></div>
+          Clear Chat
+        </div>
+      </div>
+
+      <div class="sidebar-section" style="margin-top:auto">
+        <div class="sidebar-label">Model</div>
+        <div class="tool-item active">
+          <div class="tool-dot" style="background:var(--green)"></div>
+          Agent v1
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div id="messages">
+        <div class="welcome" id="welcome-screen">
+          <div class="welcome-icon">🤖</div>
+          <h2>CodeAgent</h2>
+          <p>Your AI coding assistant is online. Ask me to write, debug, explain, or refactor code in any language.</p>
+          <div class="suggestions">
+            <div class="suggestion" onclick="sendSuggestion(this)">Write a binary search in Python</div>
+            <div class="suggestion" onclick="sendSuggestion(this)">Explain async/await</div>
+            <div class="suggestion" onclick="sendSuggestion(this)">Debug this function</div>
+            <div class="suggestion" onclick="sendSuggestion(this)">Optimize my SQL query</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrapper">
+          <textarea id="user-input" rows="1" placeholder="Ask the agent anything about code..."></textarea>
+          <div class="input-actions">
+            <span class="input-hint">↵ send</span>
+            <button id="send-btn" onclick="sendMessage()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="input-meta">
+          <span>Shift+Enter for new line</span>
+          <span id="char-count">0 chars</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Memory Modal -->
+  <div class="modal-overlay" id="memory-modal" onclick="closeMemoryOutside(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">⬡ Agent Memory</span>
+        <button class="modal-close" onclick="closeMemory()">✕</button>
+      </div>
+      <div class="modal-body" id="memory-content">
+        <div class="memory-empty">Loading memory...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    let msgCount = 0;
+    let thinkingEl = null;
+
+    // Auto-resize textarea
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
+      document.getElementById('char-count').textContent = inputEl.value.length + ' chars';
+    });
+
+    // Enter to send, Shift+Enter for newline
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    function sendSuggestion(el) {
+      inputEl.value = el.textContent;
+      inputEl.dispatchEvent(new Event('input'));
+      sendMessage();
+    }
+
+    function getTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function appendMessage(role, text) {
+      // Hide welcome screen on first message
+      if (welcomeScreen) welcomeScreen.style.display = 'none';
+
+      const div = document.createElement('div');
+      div.classList.add('msg', role);
+
+      const isAgent = role === 'agent';
+      const avatar = isAgent ? '⚡' : '✦';
+      const name = isAgent ? 'CodeAgent' : 'You';
+
+      div.innerHTML = `
+        <div class="msg-header">
+          <div class="msg-avatar">${avatar}</div>
+          <span class="msg-name">${name}</span>
+          <span class="msg-time">${getTime()}</span>
+        </div>
+        <div class="msg-body">${formatText(text)}</div>
+      `;
+
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      msgCount++;
+      document.getElementById('msg-count').textContent = msgCount + ' messages';
+    }
+
+    function formatText(text) {
+      // Escape HTML
+      let safe = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Code blocks ```lang\n...\n```
+      safe = safe.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+        return `<pre><code>${code.trim()}</code></pre>`;
+      });
+
+      // Inline code `...`
+      safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Line breaks
+      safe = safe.replace(/\n/g, '<br>');
+
+      return safe;
+    }
+
+    function showThinking() {
+      if (thinkingEl) return;
+      const wrapper = document.createElement('div');
+      wrapper.classList.add('msg', 'agent');
+      wrapper.id = 'thinking-wrapper';
+      wrapper.innerHTML = `
+        <div class="msg-header">
+          <div class="msg-avatar">⚡</div>
+          <span class="msg-name">CodeAgent</span>
+        </div>
+        <div class="thinking">
+          <div class="thinking-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span>Processing…</span>
+        </div>
+      `;
+      messagesEl.appendChild(wrapper);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      thinkingEl = wrapper;
+    }
+
+    function hideThinking() {
+      if (thinkingEl) {
+        thinkingEl.remove();
+        thinkingEl = null;
+      }
+    }
+
+    async function sendMessage() {
+      const message = inputEl.value.trim();
+      if (!message) return;
+
+      // Clear input
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      document.getElementById('char-count').textContent = '0 chars';
+
+      sendBtn.disabled = true;
+
+      appendMessage('user', message);
+      showThinking();
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        hideThinking();
+
+        if (data.response) {
+          appendMessage('agent', data.response);
+        } else if (data.error) {
+          appendMessage('agent', '⚠ Error: ' + data.error);
+        }
+      } catch (err) {
+        hideThinking();
+        appendMessage('agent', '⚠ Could not reach the server. Make sure Flask is running.');
+      } finally {
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+
+    function clearChat() {
+      const msgs = messagesEl.querySelectorAll('.msg');
+      msgs.forEach(m => m.remove());
+      msgCount = 0;
+      document.getElementById('msg-count').textContent = '0 messages';
+      if (welcomeScreen) welcomeScreen.style.display = '';
+    }
+
+    // ── Memory Helpers ──
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // Render any memory value: objects become a field table, primitives become text
+    function renderMemoryValue(val) {
+      if (val === null || val === undefined) return '<span style="color:var(--text-dim)">null</span>';
+
+      if (typeof val === 'object' && !Array.isArray(val)) {
+        // Dict → render each key-value pair as a sub-row
+        const rows = Object.entries(val).map(([k, v]) => {
+          const displayVal = typeof v === 'object' ? `<pre style="margin:4px 0 0;white-space:pre-wrap;word-break:break-word">${escapeHtml(JSON.stringify(v, null, 2))}</pre>`
+                                                   : `<span style="color:var(--text)">${escapeHtml(String(v))}</span>`;
+          return `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px solid var(--border)">
+                    <span style="color:var(--accent2);font-size:11px;min-width:110px;flex-shrink:0">${escapeHtml(k)}</span>
+                    <span style="word-break:break-word">${displayVal}</span>
+                  </div>`;
+        }).join('');
+        return `<div style="font-size:12px;line-height:1.7">${rows}</div>`;
+      }
+
+      if (Array.isArray(val)) {
+        return `<pre style="white-space:pre-wrap;word-break:break-word;font-size:12px">${escapeHtml(JSON.stringify(val, null, 2))}</pre>`;
+      }
+
+      // String / number / bool — run through formatText for code block support
+      return `<span style="font-size:13px">${formatText(String(val))}</span>`;
+    }
+
+    // ── Memory Modal ──
+    async function openMemory() {
+      document.getElementById('memory-modal').classList.add('open');
+      const contentEl = document.getElementById('memory-content');
+      contentEl.innerHTML = '<div class="memory-empty">Loading memory...</div>';
+
+      try {
+        const res = await fetch('/memory');
+        const data = await res.json();
+        const notes = data.memory;
+
+        if (!notes || (Array.isArray(notes) && notes.length === 0) ||
+            (typeof notes === 'object' && Object.keys(notes).length === 0)) {
+          contentEl.innerHTML = '<div class="memory-empty">No memory entries yet.</div>';
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.classList.add('memory-list');
+
+        if (Array.isArray(notes)) {
+          notes.forEach((note, i) => {
+            const item = document.createElement('div');
+            item.classList.add('memory-item');
+            item.innerHTML = `<div class="memory-item-key">Note #${i + 1}</div>${renderMemoryValue(note)}`;
+            list.appendChild(item);
+          });
+        } else if (typeof notes === 'object') {
+          Object.entries(notes).forEach(([key, val]) => {
+            const item = document.createElement('div');
+            item.classList.add('memory-item');
+            item.innerHTML = `<div class="memory-item-key">${escapeHtml(key)}</div>${renderMemoryValue(val)}`;
+            list.appendChild(item);
+          });
+        } else {
+          const item = document.createElement('div');
+          item.classList.add('memory-item');
+          item.innerHTML = renderMemoryValue(notes);
+          list.appendChild(item);
+        }
+
+        contentEl.innerHTML = '';
+        contentEl.appendChild(list);
+      } catch (err) {
+        contentEl.innerHTML = '<div class="memory-empty">⚠ Could not load memory.</div>';
+      }
+    }
+
+    function closeMemory() {
+      document.getElementById('memory-modal').classList.remove('open');
+    }
+
+    function closeMemoryOutside(e) {
+      if (e.target === document.getElementById('memory-modal')) closeMemory();
+    }
+
+    // Focus input on load
+    inputEl.focus();
+  </script>
+</body>
+</html>
