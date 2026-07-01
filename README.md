@@ -6,8 +6,6 @@ A lightweight AI-powered coding assistant built with Python, Flask, and an Ollam
 
 ## Frontend Preview
 
-> **Replace the image below with a screenshot of your application.**
-
 <img width="1904" height="927" alt="image" src="https://github.com/user-attachments/assets/6457c3ef-9fef-48ca-b563-cb3541f192ad" />
 
 ---
