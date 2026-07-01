@@ -59,10 +59,11 @@ Create a `bot_config.json` file:
 
 ```json
 {
-  "openai": {
-    "api_key": "YOUR_API_KEY",
-    "base_url": "YOUR_BASE_URL",
-    "model": "YOUR_MODEL_NAME"
+  "llm": {
+    "provider": "ollama",
+    "api_key": "ollama",
+    "base_url": "http://localhost:11434/v1",
+    "model": "qwen2.5-coder:7b"
   }
 }
 ```
