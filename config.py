@@ -6,9 +6,9 @@ with open("bot_config.json") as f:
     _config = json.load(f)  
   
 # LLM  
-LLM_API_KEY   = _config["openai"]["api_key"]  
-LLM_BASE_URL  = _config["openai"]["base_url"]  
-LLM_MODEL     = _config["openai"]["model"]  
+LLM_API_KEY   = _config["llm"]["api_key"]  
+LLM_BASE_URL  = _config["llm"]["base_url"]  
+LLM_MODEL     = _config["llm"]["model"]  
 
 client = OpenAI(
     api_key=LLM_API_KEY,
